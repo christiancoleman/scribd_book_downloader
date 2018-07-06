@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import urllib2
 
 SCRIBD_BASE_URL = "https://www.scribd.com/scepub/{resource_id}"
@@ -36,7 +37,13 @@ HTML_BOTTOM_ALL_PAGES = """
 
 
 def main():
-    prompt()
+    global local_name_of_book_directory
+    if len(sys.argv) > 1:
+        local_name_of_book_directory = sys.argv[1]
+        print "Creating book from already downloaded json data..."
+        create_book('y', 'y')
+    else:
+        prompt()
 
 
 #######################################################################################################################
@@ -116,6 +123,7 @@ def create_book(use_local_json, images_downloaded):
 
 
 def download_toc_from_scribd():
+    print "Downloading the table of contents..."
     global resource_id
     global token
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
@@ -124,6 +132,7 @@ def download_toc_from_scribd():
 
 
 def download_chapter_from_scribd(chapter_path):
+    print "Downloading " + chapter_path + "..."
     global resource_id
     global token
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
@@ -133,6 +142,7 @@ def download_chapter_from_scribd(chapter_path):
 
 
 def download_image_from_scribd(chapter_path, filename):
+    print "Downloading " + chapter_path + "/" + filename + "..."
     global resource_id
     global token
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
@@ -191,9 +201,8 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
             image_filename = block['src']
             height = block['height']
             width = block['width']
-            if height > 750:
+            if height > 750 or width > 1000:
                 height = height / 2
-            if width > 750:
                 width = width / 2
             if images_downloaded == "n":
                 img_raw = download_image_from_scribd(chapter_path, image_filename)
