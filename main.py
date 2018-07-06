@@ -107,6 +107,7 @@ def create_book(use_local_json, images_downloaded):
 
     html_toc_content += HTML_BOTTOM_ALL_PAGES
     html_all_content += HTML_BOTTOM_ALL_PAGES
+    html_all_content = html_all_content.replace('../images/', 'images/')
 
     save_file("toc", html_toc_content, "html")
     save_file("all", html_all_content, "html")
