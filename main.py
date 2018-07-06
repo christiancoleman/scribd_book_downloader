@@ -207,7 +207,7 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
                     try:
                         composite_list = word['words']
                         for composite in composite_list:
-                            paragraph += composite['text'] + " "
+                            paragraph += composite['text']
                         found_composite = True
                     except KeyError:
                         pass
