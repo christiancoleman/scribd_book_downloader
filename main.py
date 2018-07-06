@@ -189,11 +189,17 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
 
         if block_type == 'image':
             image_filename = block['src']
+            height = block['height']
+            width = block['width']
+            if height > 750:
+                height = height / 2
+            if width > 750:
+                width = width / 2
             if images_downloaded == "n":
                 img_raw = download_image_from_scribd(chapter_path, image_filename)
                 save_image(image_filename, img_raw)
 
-            html_chapter_content += "<img src=\"../{img_path}\"/>".format(img_path=image_filename)
+            html_chapter_content += "<img src=\"../{img_path}\" height=\"{height}\" width=\"{width}\"/>".format(img_path=image_filename, height=height, width=width)
 
         elif block_type == 'spacer':
 
