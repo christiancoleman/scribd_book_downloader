@@ -38,10 +38,18 @@ HTML_BOTTOM_ALL_PAGES = """
 
 def main():
     global local_name_of_book_directory
-    if len(sys.argv) > 1:
+    global resource_id
+    global token
+    if len(sys.argv) == 2:
         local_name_of_book_directory = sys.argv[1]
         print "Creating book from already downloaded json data..."
         create_book('y', 'y')
+    elif len(sys.argv) == 4:
+        local_name_of_book_directory = sys.argv[1]
+        resource_id = sys.argv[2]
+        token = sys.argv[3]
+        print "Creating book from already downloaded json data BUT downloading image data..."
+        create_book('y', 'n')
     else:
         prompt()
 
@@ -53,6 +61,7 @@ def prompt():
     print "###########################################"
     print "Welcome to the scribd BOOK downloading utility..."
     print "###########################################"
+    print "Use: python main.py"
     print "You will need the answers to the following:"
     print "\tHave you downloaded the json files (text content of book) locally yet?"
     print "\tHave you downloaded the images locally yet?"
@@ -60,6 +69,12 @@ def prompt():
     print "\tWhat is the book's resource id?"
     print "\tWhat is your scribd token? (this expires fast, but should last long enough to download a single book)"
     print
+    print "Other uses:"
+    print "python main.py {name_of_books_folder}"
+    print "\t Uses local data only. Need to have run the program once before. Uses json already on PC."
+    print
+    print "python main.py {name_of_books_folder} {resource_id} {token}"
+    print "\t Used to download images only while relying on already downloaded JSON data describing where everything is"
 
     global resource_id
     global token
