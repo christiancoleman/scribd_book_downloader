@@ -97,7 +97,6 @@ def download_toc_from_scribd():
     global token
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
     download_url += SCRIBD_TOC_URL.format(token=token)
-    print download_url
     return urllib2.urlopen(download_url).read()
 
 
@@ -131,23 +130,18 @@ def create_toc_from_json(json_string):
     toc_list = []
 
     for item in parsed_json:
-        print item
         path = item['filepath']
         toc_list.append(path)
-        print path
 
     return toc_list
 
 
 def create_toc_from_item(chapter_path):
-    print "<p><a href=\"" + chapter_path + "\">" + chapter_path + "</a></p>"
     return "<p><a href=\"" + chapter_path + "\">" + chapter_path + "</a></p>"
 
 
 def create_chapter_from_json(json_string, chapter_path, images_downloaded):
     html_chapter_content = ''
-
-    #print(chapter_path)
 
     save_file(chapter_path, json_string, "json")
 
@@ -201,15 +195,30 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
             words = block['words']
             # each word in words is a <dict> with individual word along with attributes associated with each word
             for word in words:
+                found_word = False
+                found_composite = False
                 try:
                     paragraph += word['text'] + " "
+                    found_word = True
                 except KeyError:
-                    print '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-                    print 'Failed to get text of specific word'
-                    print '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
                     pass
 
+                if not found_word:
+                    try:
+                        composite_list = word['words']
+                        for composite in composite_list:
+                            paragraph += composite['text'] + " "
+                        found_composite = True
+                    except KeyError:
+                        pass
+
+                if not found_composite and not found_word:
+                    print 'Unexpected type found in block_type = \'text\'' + json.dumps(word)
+
             html_chapter_content += "<p>" + TAB_CHAR + paragraph + "</p>"
+
+        elif block_type == 'raw':
+            html_chapter_content += block['data']
 
         else:
             print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -226,8 +235,6 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
 def save_image(image_filename, image_raw):
     full_path_of_file = "{PATH_FOR_BOOKS}/{dir}/".format(PATH_FOR_BOOKS=PATH_FOR_BOOKS, dir=local_name_of_book_directory) + image_filename
     create_path_if_doesnt_exist(cut_off_end_of_directory_string(full_path_of_file))
-    #print full_path_of_file
-    #print cut_off_end_of_directory_string(full_path_of_file)
     i = open(full_path_of_file, "wb")
     i.write(image_raw.read())
     i.close()
@@ -236,15 +243,12 @@ def save_image(image_filename, image_raw):
 def save_file(filename, content, file_extension):
     full_path_of_file = "{PATH_FOR_BOOKS}/{dir}/{filename}.{file_extension}".format(PATH_FOR_BOOKS=PATH_FOR_BOOKS, dir=local_name_of_book_directory, filename=filename, file_extension=file_extension)
     create_path_if_doesnt_exist(cut_off_end_of_directory_string(full_path_of_file))
-    #print full_path_of_file
-    #print cut_off_end_of_directory_string(full_path_of_file)
     j = open(full_path_of_file, "w")
     j.write(content.encode('utf-8'))
     j.close()
 
 
 def create_path_if_doesnt_exist(directory):
-    #print directory
     if not os.path.isdir(directory):
         try:
             os.makedirs(directory)
@@ -275,7 +279,6 @@ def cut_off_end_of_directory_string(path):
     result = ""
     path_list = path.split("/")
     for i in range(0, len(path_list)):
-        #print path_list[i]
         if i == len(path_list) - 1:
             return result
         if i == 0:
