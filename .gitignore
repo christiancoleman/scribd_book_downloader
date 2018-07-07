@@ -1,3 +1,7 @@
 /.idea
 /books
 /venv
+selenium_test.py
+geckodriver.log
+debug.log
+
