@@ -146,10 +146,12 @@ def prompt():
         resource_id = raw_input("Enter resource id: ")
         token = raw_input("Enter your token (leave blank if you'd like to automate it with Selenium (not working ATM)): ")
         if token == "":
+            print
             print "Getting token..."
             using_selenium = True
             get_token_with_selenium()
 
+    print
     print "Creating book..."
     create_book()
 
@@ -186,8 +188,8 @@ def create_book():
 
         html_toc_content += create_toc_from_item("{toc_item}.html".format(toc_item=toc_item))
         html_chapter_content = create_chapter_from_json(chapter_raw, toc_item)
-        html_chapter_content = HTML_TOP_ALL_PAGES + html_chapter_content + HTML_BOTTOM_ALL_PAGES
         html_all_content += html_chapter_content
+        html_chapter_content = HTML_TOP_ALL_PAGES + html_chapter_content + HTML_BOTTOM_ALL_PAGES
         save_file(toc_item, html_chapter_content, "html")
 
     html_toc_content += HTML_BOTTOM_ALL_PAGES
@@ -207,7 +209,7 @@ def download_toc_from_scribd():
     global token
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
     download_url += SCRIBD_TOC_URL.format(token=token)
-    return urllib2.urlopen(download_url).read()
+    return download_and_handle_expired_token(download_url, False)
 
 
 def download_chapter_from_scribd(chapter_path):
@@ -267,6 +269,7 @@ def download_and_handle_expired_token(download_url, is_image):
         else:
             content = urllib2.urlopen(download_url).read()
         return content
+
     except urllib2.HTTPError:
         print_error_message('Item returned an HTTPError: ' + download_url)
         if using_selenium:
@@ -282,7 +285,6 @@ def download_and_handle_expired_token(download_url, is_image):
             return content
         except urllib2.HTTPError:
             print_error_message('Failed trying to recover from an expired token')
-        pass
 
 
 #######################################################################################################################
@@ -345,7 +347,7 @@ def create_chapter_from_json(json_string, chapter_path):
             for cell in cells:
                 style = cell['style']
                 nodes = cell['nodes']
-                html_chapter_content += "\t\t\t<div style=\"{style}\">".format(style=style)
+                html_chapter_content += "\t\t\t<div style=\"{style}\">\n".format(style=style)
                 for node in nodes:
                     node_type = ''
                     try:
@@ -356,17 +358,17 @@ def create_chapter_from_json(json_string, chapter_path):
 
                     if node_type == 'image':
                         image_filename = return_image_from_node(node, chapter_path)
-                        html_chapter_content += "\t\t\t<img src=\"../{img_path}\"/>\n".format(img_path=image_filename)
+                        html_chapter_content += "\t\t\t\t<img src=\"../{img_path}\"/>\n".format(img_path=image_filename)
 
                     elif node_type == 'text':
                         paragraph = return_text_from_node(node)
-                        html_chapter_content += "\t\t\t<div>" + TAB_CHAR + paragraph + "</div>\n"
+                        html_chapter_content += "\t\t\t\t<div>" + TAB_CHAR + paragraph + "</div>\n"
 
-                html_chapter_content += "</div>\n"
+                html_chapter_content += "\t\t\t</div>\n"
 
         elif block_type == 'border':
             # TODO: what should we do with this?
-            html_chapter_content += "<h3>Found 'border' but not sure what to do with this yet</h3>\n"
+            html_chapter_content += "\t\t\t<h3>Found 'border' but not sure what to do with this yet</h3>\n"
 
         elif block_type == 'text':
             paragraph = return_text_from_node(block)
