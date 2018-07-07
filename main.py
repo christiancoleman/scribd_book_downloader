@@ -331,7 +331,12 @@ def create_chapter_from_json(json_string, chapter_path):
             print_error_message('Block - Failed to get type of block: ' + block)
             pass
 
-        if block_type == 'image':
+        if block_type == 'border':
+            html_chapter_content += "\t\t\t<span style=\"word-spacing: -4.72727px; font-size: 24px !important; " \
+                                    "line-height: 40px; font-variant-ligatures: common-ligatures; display: block; " \
+                                    "width: 100%; height: 40px; margin-left: 111px; margin-right: 191px;\"></span>\n"
+
+        elif block_type == 'image':
             image_filename = return_image_from_node(block, chapter_path)
             html_chapter_content += "\t\t\t<img src=\"../{img_path}\"/>\n".format(img_path=image_filename)
 
@@ -365,10 +370,6 @@ def create_chapter_from_json(json_string, chapter_path):
                         html_chapter_content += "\t\t\t\t<div>" + TAB_CHAR + paragraph + "</div>\n"
 
                 html_chapter_content += "\t\t\t</div>\n"
-
-        elif block_type == 'border':
-            # TODO: what should we do with this?
-            html_chapter_content += "\t\t\t<h3>Found 'border' but not sure what to do with this yet</h3>\n"
 
         elif block_type == 'text':
             paragraph = return_text_from_node(block)
