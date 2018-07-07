@@ -8,6 +8,9 @@ SCRIBD_CHAPTERS_URL = "/{chapter_path}"
 SCRIBD_TOC_URL = "/toc.json?token={token}"
 SCRIBD_CONTENT_URL = "/contents.json?token={token}"
 SCRIBD_IMAGE_URL = "/{filename}?token={token}"
+SCRIBD_STYLES_URL = "/styles.json?token={token}"
+SCRIBD_METADATA_URL = "/metadata.json?token={token}"
+SCRIBD_PAGE_REFS_URL = "/page_refs.json?token={token}"
 TAB_CHAR = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
 PATH_FOR_BOOKS = "books"
 HTML_TOP_ALL_PAGES = """
@@ -40,16 +43,22 @@ def main():
     global local_name_of_book_directory
     global resource_id
     global token
+    global use_local_json
+    global images_downloaded
     if len(sys.argv) == 2:
         local_name_of_book_directory = sys.argv[1]
+        use_local_json = 'y'
+        images_downloaded = 'y'
         print "Creating book from already downloaded json data..."
-        create_book('y', 'y')
+        create_book()
     elif len(sys.argv) == 4:
         local_name_of_book_directory = sys.argv[1]
         resource_id = sys.argv[2]
         token = sys.argv[3]
+        use_local_json = 'y'
+        images_downloaded = 'n'
         print "Creating book from already downloaded json data BUT downloading image data..."
-        create_book('y', 'n')
+        create_book()
     else:
         prompt()
 
@@ -58,9 +67,10 @@ def main():
 
 
 def prompt():
-    print "###########################################"
+    print "###########################################################################################################"
     print "Welcome to the scribd BOOK downloading utility..."
-    print "###########################################"
+    print "###########################################################################################################"
+    print
     print "Use: python main.py"
     print "You will need the answers to the following:"
     print "\tHave you downloaded the json files (text content of book) locally yet?"
@@ -75,9 +85,12 @@ def prompt():
     print
     print "python main.py {name_of_books_folder} {resource_id} {token}"
     print "\t Used to download images only while relying on already downloaded JSON data describing where everything is"
+    print
 
     global resource_id
     global token
+    global use_local_json
+    global images_downloaded
 
     use_local_json = raw_input("Use local json files? (y or n): ")
     if use_local_json != "y" and use_local_json != "n":
@@ -97,21 +110,30 @@ def prompt():
         token = raw_input("Enter your token: ")
 
     print "Creating book..."
-    create_book(use_local_json, images_downloaded)
+    create_book()
 
 
-def create_book(use_local_json, images_downloaded):
+def create_book():
     global resource_id
     global token
+    global use_local_json
+    global images_downloaded
 
     html_all_content = HTML_TOP_ALL_PAGES
-    html_toc_content = HTML_TOP_ALL_PAGES + '<h1>Table of Contents</h1>'
+    html_toc_content = HTML_TOP_ALL_PAGES + '\t\t\t<h1>Table of Contents</h1>\n'
 
     if use_local_json == "y":
         toc_json_string = read_json_from_disk("{PATH_FOR_BOOKS}/{dir}/toc.json".format(PATH_FOR_BOOKS=PATH_FOR_BOOKS, dir=local_name_of_book_directory))
     else:
         toc_json_string = download_toc_from_scribd()
-        
+        style_json_string = download_styles_from_scribd()
+        metadata_json_string = download_metadata_from_scribd()
+        page_refs_json_string = download_page_refs_from_scribd()
+        save_file("toc", toc_json_string, "json")
+        save_file("styles", style_json_string, "json")
+        save_file("metadata", metadata_json_string, "json")
+        save_file("page_refs", page_refs_json_string, "json")
+
     toc_list = create_toc_from_json(toc_json_string)
 
     for toc_item in toc_list:
@@ -122,9 +144,9 @@ def create_book(use_local_json, images_downloaded):
             save_file(toc_item, chapter_raw, "json")
 
         html_toc_content += create_toc_from_item("{toc_item}.html".format(toc_item=toc_item))
-        html_chapter_content = create_chapter_from_json(chapter_raw, toc_item, images_downloaded)
-        html_all_content += html_chapter_content
+        html_chapter_content = create_chapter_from_json(chapter_raw, toc_item)
         html_chapter_content = HTML_TOP_ALL_PAGES + html_chapter_content + HTML_BOTTOM_ALL_PAGES
+        html_all_content += html_chapter_content
         save_file(toc_item, html_chapter_content, "html")
 
     html_toc_content += HTML_BOTTOM_ALL_PAGES
@@ -160,18 +182,48 @@ def download_image_from_scribd(chapter_path, filename):
     print "Downloading " + chapter_path + "/" + filename + "..."
     global resource_id
     global token
+    img = ''
     download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
     download_url += SCRIBD_CHAPTERS_URL.format(chapter_path=chapter_path)
     download_url += SCRIBD_IMAGE_URL.format(filename=filename, token=token)
-    return urllib2.urlopen(download_url)
+    try:
+        img = urllib2.urlopen(download_url)
+    except urllib2.HTTPError:
+        print_error_message('Photo returned an HTTPError: ' + download_url)
+        pass
+    return img
 
 
-#####################################################################
+def download_styles_from_scribd():
+    print "Downloading styles..."
+    global resource_id
+    global token
+    download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
+    download_url += SCRIBD_STYLES_URL.format(token=token)
+    return urllib2.urlopen(download_url).read()
+
+
+def download_metadata_from_scribd():
+    print "Downloading metadata..."
+    global resource_id
+    global token
+    download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
+    download_url += SCRIBD_METADATA_URL.format(token=token)
+    return urllib2.urlopen(download_url).read()
+
+
+def download_page_refs_from_scribd():
+    print "Downloading page references..."
+    global resource_id
+    global token
+    download_url = SCRIBD_BASE_URL.format(resource_id=resource_id)
+    download_url += SCRIBD_PAGE_REFS_URL.format(token=token)
+    return urllib2.urlopen(download_url).read()
+
+#######################################################################################################################
 
 
 def create_toc_from_json(json_string):
-    save_file("toc", json_string, "json")
-
     parsed_json = json.loads(json_string)
     # parsed json is a <list>
 
@@ -185,10 +237,12 @@ def create_toc_from_json(json_string):
 
 
 def create_toc_from_item(chapter_path):
-    return "<p><a href=\"" + chapter_path + "\">" + chapter_path + "</a></p>"
+    return "\t\t\t<div><a href=\"" + chapter_path + "\">" + chapter_path + "</a></div>\n"
 
 
-def create_chapter_from_json(json_string, chapter_path, images_downloaded):
+def create_chapter_from_json(json_string, chapter_path):
+    global images_downloaded
+
     html_chapter_content = ''
 
     save_file(chapter_path, json_string, "json")
@@ -207,80 +261,106 @@ def create_chapter_from_json(json_string, chapter_path, images_downloaded):
         try:
             block_type = block['type']
         except KeyError:
-            print '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'
-            print 'Failed to get type of block: ' + block
-            print '^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'
+            print_error_message('Block - Failed to get type of block: ' + block)
             pass
 
         if block_type == 'image':
-            image_filename = block['src']
-            height = block['height']
-            width = block['width']
-            if height > 750 or width > 1000:
-                height = height / 2
-                width = width / 2
-            if images_downloaded == "n":
-                img_raw = download_image_from_scribd(chapter_path, image_filename)
-                save_image(image_filename, img_raw)
-
-            html_chapter_content += "<img src=\"../{img_path}\" height=\"{height}\" width=\"{width}\"/>".format(img_path=image_filename, height=height, width=width)
+            image_filename = return_image_from_node(block, chapter_path)
+            html_chapter_content += "\t\t\t<img src=\"../{img_path}\"/>\n".format(img_path=image_filename)
 
         elif block_type == 'spacer':
-
-            html_chapter_content += "<p></p>"
+            height = block['size']
+            html_chapter_content += "\t\t\t<span style=\"display:block; height: {size};\">&nbsp;</span>\n".format(size=height)
 
         elif block_type == 'page_break':
-
-            html_chapter_content += "<hr>"
+            html_chapter_content += "\t\t\t<hr>\n"
 
         elif block_type == 'row':
-
-            # TODO: what should we do with this?
-            html_chapter_content += "<h3>Found 'row' but not sure what to do with this yet</h3>"
-
-        elif block_type == 'border':
-
-            # TODO: what should we do with this?
-            html_chapter_content += "<h3>Found 'border' but not sure what to do with this yet</h3>"
-
-        elif block_type == 'text':
-            paragraph = ''
-            words = block['words']
-            # each word in words is a <dict> with individual word along with attributes associated with each word
-            for word in words:
-                found_word = False
-                found_composite = False
-                try:
-                    paragraph += word['text'] + " "
-                    found_word = True
-                except KeyError:
-                    pass
-
-                if not found_word:
+            cells = block['cells']
+            for cell in cells:
+                style = cell['style']
+                nodes = cell['nodes']
+                html_chapter_content += "\t\t\t<div style=\"{style}\">".format(style=style)
+                for node in nodes:
+                    node_type = ''
                     try:
-                        composite_list = word['words']
-                        for composite in composite_list:
-                            paragraph += composite['text']
-                        found_composite = True
+                        node_type = node['type']
                     except KeyError:
+                        print_error_message('Node - Failed to get type of node: ' + node)
                         pass
 
-                if not found_composite and not found_word:
-                    print 'Unexpected type found in block_type = \'text\'' + json.dumps(word)
+                    if node_type == 'image':
+                        image_filename = return_image_from_node(node, chapter_path)
+                        html_chapter_content += "\t\t\t<img src=\"../{img_path}\"/>\n".format(img_path=image_filename)
 
-            html_chapter_content += "<p>" + TAB_CHAR + paragraph + "</p>"
+                    elif node_type == 'text':
+                        paragraph = return_text_from_node(node)
+                        html_chapter_content += "\t\t\t<div>" + TAB_CHAR + paragraph + "</div>\n"
+
+                html_chapter_content += "</div>\n"
+
+        elif block_type == 'border':
+            # TODO: what should we do with this?
+            html_chapter_content += "<h3>Found 'border' but not sure what to do with this yet</h3>\n"
+
+        elif block_type == 'text':
+            paragraph = return_text_from_node(block)
+            html_chapter_content += "\t\t\t<div>" + TAB_CHAR + paragraph + "</div>\n"
 
         elif block_type == 'raw':
             html_chapter_content += block['data']
 
         else:
-            print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-            print 'An unexpected type occurred! Type = ' + block_type
-            print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-
-            html_chapter_content += "<h1>UNEXPECTED TYPE (" + block_type + ")</h1>"
+            print_error_message('An unexpected type occurred! Type = ' + block_type)
+            html_chapter_content += "\t\t\t<h1>UNEXPECTED TYPE (" + block_type + ")</h1>\n"
 
     return html_chapter_content
+
+
+#######################################################################################################################
+
+def return_image_from_node(block, chapter_path):
+    image_filename = block['src']
+    if images_downloaded == "n":
+        img_raw = download_image_from_scribd(chapter_path, image_filename)
+        if img_raw != "":
+            save_image(image_filename, img_raw)
+    return image_filename
+
+
+def return_text_from_node(block):
+    paragraph = ''
+
+    try:
+        words = block['words']
+    except KeyError:
+        print "!Found " + str(block)
+        return
+
+    # each word in words is a <dict> with individual word along with attributes associated with each word
+    for word in words:
+        found_word = False
+        found_composite = False
+        try:
+            paragraph += word['text'] + " "
+            found_word = True
+        except KeyError:
+            pass
+
+        if not found_word:
+            try:
+                composite_list = word['words']
+                for composite in composite_list:
+                    paragraph += composite['text']
+                found_composite = True
+            except KeyError:
+                pass
+
+        if not found_composite and not found_word:
+            print_error_message('Unexpected type found in block_type = \'text\'' + json.dumps(word))
+    return paragraph
+
+#######################################################################################################################
 
 
 def save_image(image_filename, image_raw):
@@ -304,9 +384,7 @@ def create_path_if_doesnt_exist(directory):
         try:
             os.makedirs(directory)
         except OSError:
-            print '0000000000000000000000000000000000000000000000000000000'
-            print 'Failed to create directory: ' + directory
-            print '0000000000000000000000000000000000000000000000000000000'
+            print_error_message('Failed to create directory: ' + directory)
             pass
 
 
@@ -339,6 +417,13 @@ def cut_off_end_of_directory_string(path):
                 result += path_list[i] + "/"
         else:
             result += path_list[i] + "/"
+
+
+def print_error_message(msg):
+    print '00000000000000000000000000000000000000000000000000000000'
+    print msg
+    print '00000000000000000000000000000000000000000000000000000000'
+    print
 
 
 main()
