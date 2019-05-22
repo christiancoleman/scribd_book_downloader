@@ -1,3 +1,5 @@
+# As of 2019-05-22; I've confirmed this method no longer works. Will require rewrite. I don't really have the time to commit to that now, but would be willing to work with an experienced and knowledgeable developer to push them in the right direction. #
+
 # Disclaimer #
 **This utility can be used to download the contents of books from scribd. This tool is not to be used to download books in which you don't already own a copy. Any illegal use of this tool will not hold the developer responsible. Even if you own the book in one form or another, downloading the contents directly from their API might be considered a violation of their ToS. The author of this tool has not dived into the legal ramifications and would encourage caution in using this.
 Also, this tool requires that you have an active scribd subscription (it asks you for a token upon each use and scribd does not allow you to download the content without one). Free trials can be used, but I recommend everyone subscribe to this service as it's a great tool that provides an interesting way to digest the contents of your library in a completely DRM-free way - whether this be intentional or not.**
